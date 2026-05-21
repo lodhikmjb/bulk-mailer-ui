@@ -69,8 +69,8 @@ app.post("/send", async (req, res) => {
             }
           ],
           from: {
-            email: sentFrom,
-            name: firstName
+            email: "lodhikmjb@gmail.com",
+            name: "Bulk Mailer"
           },
           subject: subject,
           content: [
