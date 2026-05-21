@@ -5,7 +5,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const app = express();
-const PORT = 3000;
+
+// ✅ FIX: Render PORT
+const PORT = process.env.PORT || 3000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,7 +15,7 @@ const __dirname = path.dirname(__filename);
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// LOGIN DETAILS
+// LOGIN DETAILS (basic demo)
 const USERNAME = "admin";
 const PASSWORD = "12345";
 
@@ -40,11 +42,17 @@ app.post("/send", async (req, res) => {
   } = req.body;
 
   try {
+    // ✅ FIXED SMTP CONFIG (Render safe)
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
       auth: {
         user: sentFrom,
         pass: appPassword
+      },
+      tls: {
+        rejectUnauthorized: false
       }
     });
 
@@ -54,18 +62,14 @@ app.post("/send", async (req, res) => {
       .filter(email => email);
 
     for (const email of emailList) {
-const info = await transporter.sendMail({
-  from: `${firstName} <${sentFrom}>`,
-  to: email,
-  subject,
-  html: body
-});
+      const info = await transporter.sendMail({
+        from: `${firstName} <${sentFrom}>`,
+        to: email,
+        subject,
+        html: body
+      });
 
-console.log(`Sent to ${email}`);
-console.log("MESSAGE ID:", info.messageId);
-console.log("RESPONSE:", info.response);
-console.log("MESSAGE ID:", info.messageId);
-console.log("RESPONSE:", info.response);
+      console.log(`✅ Sent to: ${email} | ID: ${info.messageId}`);
     }
 
     res.json({
@@ -74,7 +78,7 @@ console.log("RESPONSE:", info.response);
     });
 
   } catch (error) {
-    console.log(error);
+    console.log("❌ ERROR:", error);
 
     res.json({
       success: false,
@@ -83,6 +87,8 @@ console.log("RESPONSE:", info.response);
   }
 });
 
+// START SERVER
 app.listen(PORT, () => {
-  console.log(`Server Running: http://localhost:${PORT}`);
+app.listen(PORT, () => {
+  console.log(`Server Running on PORT: ${PORT}`);
 });
