@@ -5,33 +5,53 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000; // Render safe fallback
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use(bodyParser.json());
+// IMPORTANT: prevent timeout / slow parsing issues
+app.use(express.json({ limit: "10mb" }));
+app.use(bodyParser.urlencoded({ extended: true }));
+
 app.use(express.static(path.join(__dirname, "public")));
+
+// HEALTH CHECK (IMPORTANT for Render stability)
+app.get("/", (req, res) => {
+  res.send("Server is running 🚀");
+});
 
 // LOGIN
 const USERNAME = "admin";
 const PASSWORD = "12345";
 
 app.post("/login", (req, res) => {
-  const { username, password } = req.body;
+  try {
+    const { username, password } = req.body;
 
-  if (username === USERNAME && password === PASSWORD) {
-    return res.json({ success: true });
+    if (username === USERNAME && password === PASSWORD) {
+      return res.json({ success: true });
+    }
+
+    return res.json({ success: false });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
   }
-
-  res.json({ success: false });
 });
 
-// SEND MAIL
+// SEND MAIL (FIXED + TIMEOUT SAFE)
 app.post("/send", async (req, res) => {
-  const { firstName, sentFrom, subject, body, mails } = req.body;
-
   try {
+    const { firstName, sentFrom, subject, body, mails } = req.body;
+
+    if (!mails || !subject || !body) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing fields"
+      });
+    }
+
     const transporter = nodemailer.createTransport({
       host: "smtp.sendgrid.net",
       port: 587,
@@ -39,6 +59,9 @@ app.post("/send", async (req, res) => {
       auth: {
         user: "apikey",
         pass: process.env.SENDGRID_API_KEY
+      },
+      tls: {
+        rejectUnauthorized: false
       }
     });
 
@@ -47,7 +70,10 @@ app.post("/send", async (req, res) => {
       .map(e => e.trim())
       .filter(Boolean);
 
-    for (const email of emailList) {
+    // send sequentially (avoids Render timeout crash)
+    for (let i = 0; i < emailList.length; i++) {
+      const email = emailList[i];
+
       await transporter.sendMail({
         from: `${firstName} <${sentFrom}>`,
         to: email,
@@ -55,17 +81,25 @@ app.post("/send", async (req, res) => {
         html: body
       });
 
-      console.log("Sent to:", email);
+      console.log(`Sent (${i + 1}/${emailList.length}):`, email);
     }
 
-    res.json({ success: true, message: "Emails sent" });
+    return res.json({
+      success: true,
+      message: `Emails sent: ${emailList.length}`
+    });
 
   } catch (err) {
-    console.log(err);
-    res.json({ success: false, message: err.message });
+    console.log("ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server Running on PORT: ${PORT}`);
+// IMPORTANT FOR RENDER
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });
