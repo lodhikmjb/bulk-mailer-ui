@@ -5,8 +5,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const app = express();
-
-// ✅ FIX: Render PORT
 const PORT = process.env.PORT || 3000;
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,11 +13,10 @@ const __dirname = path.dirname(__filename);
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// LOGIN DETAILS (basic demo)
+// LOGIN
 const USERNAME = "admin";
 const PASSWORD = "12345";
 
-// LOGIN API
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
 
@@ -30,65 +27,45 @@ app.post("/login", (req, res) => {
   res.json({ success: false });
 });
 
-// SEND MAIL API
+// SEND MAIL
 app.post("/send", async (req, res) => {
-  const {
-    firstName,
-    sentFrom,
-    appPassword,
-    subject,
-    body,
-    mails
-  } = req.body;
+  const { firstName, sentFrom, subject, body, mails } = req.body;
 
   try {
-    // ✅ FIXED SMTP CONFIG (Render safe)
     const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
+      host: "smtp.sendgrid.net",
       port: 587,
       secure: false,
       auth: {
-        user: sentFrom,
-        pass: appPassword
-      },
-      tls: {
-        rejectUnauthorized: false
+        user: "apikey",
+        pass: process.env.SENDGRID_API_KEY
       }
     });
 
     const emailList = mails
       .split("\n")
-      .map(email => email.trim())
-      .filter(email => email);
+      .map(e => e.trim())
+      .filter(Boolean);
 
     for (const email of emailList) {
-      const info = await transporter.sendMail({
+      await transporter.sendMail({
         from: `${firstName} <${sentFrom}>`,
         to: email,
         subject,
         html: body
       });
 
-      console.log(`✅ Sent to: ${email} | ID: ${info.messageId}`);
+      console.log("Sent to:", email);
     }
 
-    res.json({
-      success: true,
-      message: "Emails Sent Successfully"
-    });
+    res.json({ success: true, message: "Emails sent" });
 
-  } catch (error) {
-    console.log("❌ ERROR:", error);
-
-    res.json({
-      success: false,
-      message: error.message
-    });
+  } catch (err) {
+    console.log(err);
+    res.json({ success: false, message: err.message });
   }
 });
 
-// START SERVER
-app.listen(PORT, () => {
 app.listen(PORT, () => {
   console.log(`Server Running on PORT: ${PORT}`);
 });
