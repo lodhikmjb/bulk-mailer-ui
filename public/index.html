@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bulk Mailer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="login-box" id="loginBox">
+  <h2>Login</h2>
+
+  <input type="text" id="username" placeholder="Username">
+  <input type="password" id="password" placeholder="Password">
+
+  <button onclick="login()">Login</button>
+</div>
+
+<div class="container" id="mailerBox" style="display:none;">
+  <h1>Bulk Mailer</h1>
+
+  <input type="text" id="firstName" placeholder="First Name">
+
+  <input type="email" id="sentFrom" placeholder="Sent From">
+
+  <input type="password" id="appPassword" placeholder="App Password">
+
+  <input type="text" id="subject" placeholder="Subject">
+
+  <textarea id="body" placeholder="Email Body"></textarea>
+
+  <textarea id="mails" placeholder="One Email Per Line"></textarea>
+
+  <button onclick="sendMail()">Send Emails</button>
+
+  <p id="status"></p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
